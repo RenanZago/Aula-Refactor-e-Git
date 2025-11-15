@@ -23,14 +23,5 @@ public class Cliente {
         return nome;
     }
 
-    // Este método deveria estar na classe Pedido
-    public double calcularDesconto() {
-        if (pedido.getValorTotal() > 1000) {
-            return pedido.getValorTotal() * 0.10;
-        } else if (pedido.getValorTotal() > 500) {
-            return pedido.getValorTotal() * 0.05;
-        }
-        return 0;
-    }
 }
 

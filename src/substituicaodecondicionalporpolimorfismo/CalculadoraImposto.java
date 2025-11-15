@@ -11,16 +11,9 @@ package substituicaodecondicionalporpolimorfismo;
  */
 public class CalculadoraImposto {
     
-    public double calcularImposto(String tipo, double valor) {
-        if (tipo.equals("PESSOA_FISICA")) {
-            return valor * 0.10;
-        } else if (tipo.equals("PESSOA_JURIDICA")) {
-            return valor * 0.15;
-        } else if (tipo.equals("MEI")) {
-            return valor * 0.05;
-        } else {
-            return valor * 0.20;
-        }
+    public double calcularImposto(Contribuinte contribuinte, double valorImposto) {
+        return contribuinte.calcularImposto(valorImposto);
     }
+
 }
 
