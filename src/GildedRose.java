@@ -10,6 +10,10 @@ public class GildedRose {
     public static final int MAX_QUALITY = 50;
     public static final int BACKSTAGE_PASS_THRESHOLD_1 = 11;
     public static final int BACKSTAGE_PASS_THRESHOLD_2 = 6;
+    public static final int STANDARD_QUALITY_DECREASE = 1;
+    public static final int STANDARD_QUALITY_INCREASE = 1;
+    public static final int DAILY_SELLIN_DECREASE = 1;
+    public static final int EXPIRATION_THRESHOLD = 0;
 
     Item[] items;
 
@@ -18,85 +22,101 @@ public class GildedRose {
     }
 
     public void updateQuality() {
-        for (int i = 0; i < items.length; i++) {
-            if (!items[i].name.equals(AGED_BRIE)
-                    && !items[i].name.equals(BACKSTAGE_PASSES_TO_A_TAFKAL_80_ETC_CONCERT)
-                    && !items[i].name.equals(CONJURED_MANA_CAKE)
-                    && !items[i].name.equals(ETERNAL_ARTIFACT)) {
-                if (items[i].getQuality() > MIN_QUALITY) {
-                    if (!items[i].name.equals(SULFURAS_HAND_OF_RAGNAROS)) {
-                        items[i].setQuality(items[i].getQuality() - 1);
-                        // Additional degradation for perishable items
-                        if (items[i].name.contains(PERISHABLE)) {
-                            items[i].setQuality(items[i].getQuality() - 1);
-                        }
-                    }
-                }
-            } else {
-                if (items[i].getQuality() < MAX_QUALITY) {
-                    items[i].setQuality(items[i].getQuality() + 1);
-                    if (items[i].name.equals(BACKSTAGE_PASSES_TO_A_TAFKAL_80_ETC_CONCERT)) {
-                        if (items[i].getSellIn() < BACKSTAGE_PASS_THRESHOLD_1) {
-                            if (items[i].getQuality() < MAX_QUALITY) {
-                                items[i].setQuality(items[i].getQuality() + 1);
-                            }
-                        }
-                        if (items[i].getSellIn() < BACKSTAGE_PASS_THRESHOLD_2) {
-                            if (items[i].getQuality() < MAX_QUALITY) {
-                                items[i].setQuality(items[i].getQuality() + 1);
-                            }
-                        }
-                    } else if (items[i].name.equals(CONJURED_MANA_CAKE)) {
-                        // Conjured items degrade twice as fast
-                        items[i].setQuality(items[i].getQuality() + 1); // But for quality increase? Wait, adjust logic
-                    } else if (items[i].name.equals(ETERNAL_ARTIFACT)) {
-                        // Increases quality over time, but slowly
-                        if (items[i].getSellIn() % 2 == 0) {
-                            items[i].setQuality(items[i].getQuality() + 1);
-                        }
-                    }
-                }
-            }
+        for (Item item : items) {
+            updateItemQuality(item);
 
-            if (!items[i].name.equals(SULFURAS_HAND_OF_RAGNAROS) && !items[i].name.equals(ETERNAL_ARTIFACT)) {
-                items[i].setSellIn(items[i].getSellIn() - 1);
-            }
+            updateSellIn(item);
 
-            if (items[i].getSellIn() < 0) {
-                if (!items[i].name.equals(AGED_BRIE)) {
-                    if (!items[i].name.equals(BACKSTAGE_PASSES_TO_A_TAFKAL_80_ETC_CONCERT)) {
-                        if (items[i].getQuality() > MIN_QUALITY) {
-                            if (!items[i].name.equals(SULFURAS_HAND_OF_RAGNAROS)) {
-                                items[i].setQuality(items[i].getQuality() - 1);
-                                if (items[i].name.equals(CONJURED_MANA_CAKE)) {
-                                    items[i].setQuality(items[i].getQuality() - 1); // Extra degradation
-                                }
-                                // Handle perishable post-sellIn
-                                if (items[i].name.contains(PERISHABLE)) {
-                                    items[i].setQuality(items[i].getQuality() - 2);
-                                }
+            handleExpiratedItem(item);
+
+            enforceQualityBounds(item);
+        }
+    }
+
+    private void enforceQualityBounds(Item item) {
+        // Ensure quality bounds
+        if (item.getQuality() > MAX_QUALITY && !item.name.equals(SULFURAS_HAND_OF_RAGNAROS)) {
+            item.setQuality(MAX_QUALITY);
+        }
+        if (item.getQuality() < MIN_QUALITY) {
+            item.setQuality(MIN_QUALITY);
+        }
+    }
+
+    private void handleExpiratedItem(Item item) {
+        if (item.getSellIn() < EXPIRATION_THRESHOLD) {
+            if (!item.name.equals(AGED_BRIE)) {
+                if (!item.name.equals(BACKSTAGE_PASSES_TO_A_TAFKAL_80_ETC_CONCERT)) {
+                    if (item.getQuality() > MIN_QUALITY) {
+                        if (!item.name.equals(SULFURAS_HAND_OF_RAGNAROS)) {
+                            item.setQuality(item.getQuality() - STANDARD_QUALITY_DECREASE);
+                            if (item.name.equals(CONJURED_MANA_CAKE)) {
+                                item.setQuality(item.getQuality() - STANDARD_QUALITY_DECREASE); // Extra degradation
+                            }
+                            // Handle perishable post-sellIn
+                            if (item.name.contains(PERISHABLE)) {
+                                item.setQuality(item.getQuality() - STANDARD_QUALITY_DECREASE * 2);
                             }
                         }
-                    } else {
-                        items[i].setQuality(items[i].getQuality() - items[i].getQuality());
                     }
                 } else {
-                    if (items[i].getQuality() < MAX_QUALITY) {
-                        items[i].setQuality(items[i].getQuality() + 1);
+                    item.setQuality(MIN_QUALITY);
+                }
+            } else {
+                if (item.getQuality() < MAX_QUALITY) {
+                    item.setQuality(item.getQuality() + STANDARD_QUALITY_INCREASE);
+                }
+            }
+            // Additional logic for eternal items after sellIn (though sellIn doesn't change)
+            if (item.name.equals(ETERNAL_ARTIFACT) && item.getQuality() < MAX_QUALITY) {
+                item.setQuality(item.getQuality() + STANDARD_QUALITY_INCREASE);
+            }
+        }
+    }
+
+    private void updateSellIn(Item item) {
+        if (!item.name.equals(SULFURAS_HAND_OF_RAGNAROS) && !item.name.equals(ETERNAL_ARTIFACT)) {
+            item.setSellIn(item.getSellIn() - DAILY_SELLIN_DECREASE);
+        }
+    }
+
+    private void updateItemQuality(Item item) {
+        if (!item.name.equals(AGED_BRIE)
+                && !item.name.equals(BACKSTAGE_PASSES_TO_A_TAFKAL_80_ETC_CONCERT)
+                && !item.name.equals(CONJURED_MANA_CAKE)
+                && !item.name.equals(ETERNAL_ARTIFACT)) {
+            if (item.getQuality() > MIN_QUALITY) {
+                if (!item.name.equals(SULFURAS_HAND_OF_RAGNAROS)) {
+                    item.setQuality(item.getQuality() - STANDARD_QUALITY_DECREASE);
+                    // Additional degradation for perishable items
+                    if (item.name.contains(PERISHABLE)) {
+                        item.setQuality(item.getQuality() - STANDARD_QUALITY_DECREASE);
                     }
                 }
-                // Additional logic for eternal items after sellIn (though sellIn doesn't change)
-                if (items[i].name.equals(ETERNAL_ARTIFACT) && items[i].getQuality() < MAX_QUALITY) {
-                    items[i].setQuality(items[i].getQuality() + 1);
+            }
+        } else {
+            if (item.getQuality() < MAX_QUALITY) {
+                item.setQuality(item.getQuality() + 1);
+                if (item.name.equals(BACKSTAGE_PASSES_TO_A_TAFKAL_80_ETC_CONCERT)) {
+                    if (item.getSellIn() < BACKSTAGE_PASS_THRESHOLD_1) {
+                        if (item.getQuality() < MAX_QUALITY) {
+                            item.setQuality(item.getQuality() + STANDARD_QUALITY_INCREASE);
+                        }
+                    }
+                    if (item.getSellIn() < BACKSTAGE_PASS_THRESHOLD_2) {
+                        if (item.getQuality() < MAX_QUALITY) {
+                            item.setQuality(item.getQuality() + STANDARD_QUALITY_INCREASE);
+                        }
+                    }
+                } else if (item.name.equals(CONJURED_MANA_CAKE)) {
+                    // Conjured items degrade twice as fast
+                    item.setQuality(item.getQuality() + STANDARD_QUALITY_INCREASE); // But for quality increase? Wait, adjust logic
+                } else if (item.name.equals(ETERNAL_ARTIFACT)) {
+                    // Increases quality over time, but slowly
+                    if (item.getSellIn() % 2 == 0) {
+                        item.setQuality(item.getQuality() + STANDARD_QUALITY_INCREASE);
+                    }
                 }
-            }
-
-            // Ensure quality bounds
-            if (items[i].getQuality() > MAX_QUALITY && !items[i].name.equals(SULFURAS_HAND_OF_RAGNAROS)) {
-                items[i].setQuality(MAX_QUALITY);
-            }
-            if (items[i].getQuality() < MIN_QUALITY) {
-                items[i].setQuality(MIN_QUALITY);
             }
         }
     }
